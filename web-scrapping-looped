@@ -85,3 +85,5 @@ for x in month_container_list:
         f.write(month + "," + date.replace(",", "") + "," + start + "," + v_name + "," + v_pts + "," + h_name + "," + h_pts + "," + ovt + "," + ref1 + "," + ref2 + "," + ref3 + "\n")
     
 f.close()
+
+# loops over dates and refs, does not loop over games!
