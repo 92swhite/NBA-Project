@@ -1,55 +1,94 @@
- 
-foul_page_link = "https://www.basketball-reference.com/boxscores/pbp/"
-full_foul_page_link = foul_page_link + ref_page_link[-17:]
+ from urllib.request import urlopen as uReq
+from bs4 import BeautifulSoup as soup
+import time
+
+my_url = "https://www.basketball-reference.com/leagues/NBA_2016_games.html"
+uClient = uReq(my_url)
+page_html = uClient.read()
+uClient.close()
+
+page_soup = soup(page_html, "html.parser")
+containers = page_soup.findAll("tr")
+del containers[0]
+container = containers[0]
 
 
-foul_page_url = full_foul_page_link
-foulClient = uReq(foul_page_url)
-foul_page_html = foulClient.read()
-foulClient.close()
-foul_page_soup = soup(foul_page_html, "html.parser")
 
-foul_table = table.findAll('tr')
+month_container = page_soup.findAll("div", {"class":"filter"})
+month_container_list = month_container[0].findAll("div")
+month = month_container_list[0].text.strip()
+month_holder = month_container_list[0]
+for a in month_holder.findAll("a", href = True):month_link = (a["href"])
+full_month_link = "https://www.basketball-reference.com" + month_link
 
-foul_count = []
-for i in foul_table:
-    if 'foul' in i.text
-foul_list = []
-for i in foul_table:
-    if 'foul' in i.text or 'quarter' in i.text:
-        foul_list.append(i.text)
+month = month_container_list[0].text.strip()
+month_holder = month_container_list[0]
+for a in month_holder.findAll("a", href = True):month_link = (a["href"])
+full_month_link = "https://www.basketball-reference.com" + month_link
 
-foul_quarter = []
-for i in foul_list:
-    if 'quarter' in i:
-        foul_quarter.append(foul_list.index(i))
+my_url = full_month_link
+uClient = uReq(my_url)
+page_html = uClient.read()
+uClient.close()
+
+page_soup = soup(page_html, "html.parser")
+containers = page_soup.findAll("tr")
+del containers[0]
+container = containers[0]
+
+time.sleep(5)
+
+for container in containers:
+    box_score_container = container.findAll("td", {"data-stat":"box_score_text"})[0]
+    for link in box_score_container:
+        foul_page_link = (link.get("href"))
         
-
-z = y[1].replace('\n', ' ')
-test = z.split()
-foul_time = test[0]
-foul_type = test[1]
-
-# foul_on = who commited the foul
-# foul_drawn = who drew the foul
-foul_on =  test[4] + ' ' + test[5]
-foul_drawn = test[8] + ' ' + test[9]
-foul_totals = 
-
-
-if any(char.isdigit() for char in test2[1]):
-    foul_team = v_name
-    foul_score = test2[2]
-else:
-    foul_team = h_name
-    foul_score = test2[1]
-
-
-        
-for i in y:
-    if "quarter" in i:
-        z.append(y.index(i))
-        
-for i in y[z[0]:z[1]]:
-    test.append(i)
+    full_foul_page_link = "https://www.basketball-reference.com/boxscores/pbp/" + foul_page_link
+    foul_page_url = full_foul_page_link
+    foulClient = uReq(foul_page_url)
+    foul_page_html = foulClient.read()
+    foulClient.close()
+    foul_page_soup = soup(foul_page_html, "html.parser")
     
+    table = foul_page_soup.findAll("div",{"class":"overthrow table_container"})
+    foul_table = table.findAll('tr')
+    
+    filename = foul_page_link[0:12] + '.csv'
+    f = open(filename, "w")
+    headers = "date, v_name, v_points, h_name, h_points, ovt\n"
+    f.write(headers)
+    
+    date_container = container.findAll("th", {"data-stat":"date_game"})
+    date = date_container[0].text
+    
+    vistor_container = container.findAll("td", {"data-stat":"visitor_team_name"})
+    v_name = vistor_container[0].text
+    
+    vistor_pts_container = container.findAll("td", {"data-stat":"visitor_pts"})
+    v_pts = vistor_pts_container[0].text
+    
+    home_name_container = container.findAll("td", {"data-stat":"home_team_name"})
+    h_name = home_name_container[0].text
+    
+    home_pts_container = container.findAll("td", {"data-stat":"home_pts"})
+    h_pts = home_pts_container[0].text
+    
+    overtime_container = container.findAll("td", {"data-stat":"overtimes"})
+    ovt = overtime_container[0].text
+
+    
+
+
+    foul_page_url = full_foul_page_link
+    foulClient = uReq(foul_page_url)
+    foul_page_html = foulClient.read()
+    foulClient.close()
+    foul_page_soup = soup(foul_page_html, "html.parser")
+
+    foul_table = table.findAll('tr')
+    
+    
+    
+    f.write(month + "," + date.replace(",", "") + "," + start + "," + v_name + "," + v_pts + "," + h_name + "," + h_pts + "," + ovt + "," + ref1 + "," + ref2 + "," + ref3 + "," + attendance.replace(",", "") + "\n")
+    
+f.close()
