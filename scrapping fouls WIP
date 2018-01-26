@@ -1,0 +1,55 @@
+ 
+foul_page_link = "https://www.basketball-reference.com/boxscores/pbp/"
+full_foul_page_link = foul_page_link + ref_page_link[-17:]
+
+
+foul_page_url = full_foul_page_link
+foulClient = uReq(foul_page_url)
+foul_page_html = foulClient.read()
+foulClient.close()
+foul_page_soup = soup(foul_page_html, "html.parser")
+
+foul_table = table.findAll('tr')
+
+foul_count = []
+for i in foul_table:
+    if 'foul' in i.text
+foul_list = []
+for i in foul_table:
+    if 'foul' in i.text or 'quarter' in i.text:
+        foul_list.append(i.text)
+
+foul_quarter = []
+for i in foul_list:
+    if 'quarter' in i:
+        foul_quarter.append(foul_list.index(i))
+        
+
+z = y[1].replace('\n', ' ')
+test = z.split()
+foul_time = test[0]
+foul_type = test[1]
+
+# foul_on = who commited the foul
+# foul_drawn = who drew the foul
+foul_on =  test[4] + ' ' + test[5]
+foul_drawn = test[8] + ' ' + test[9]
+foul_totals = 
+
+
+if any(char.isdigit() for char in test2[1]):
+    foul_team = v_name
+    foul_score = test2[2]
+else:
+    foul_team = h_name
+    foul_score = test2[1]
+
+
+        
+for i in y:
+    if "quarter" in i:
+        z.append(y.index(i))
+        
+for i in y[z[0]:z[1]]:
+    test.append(i)
+    
