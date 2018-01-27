@@ -1,8 +1,8 @@
- from urllib.request import urlopen as uReq
+from urllib.request import urlopen as uReq
 from bs4 import BeautifulSoup as soup
 import time
 
-my_url = "https://www.basketball-reference.com/leagues/NBA_2016_games.html"
+my_url = "https://www.basketball-reference.com/leagues/NBA_2000_games.html"
 uClient = uReq(my_url)
 page_html = uClient.read()
 uClient.close()
@@ -12,7 +12,10 @@ containers = page_soup.findAll("tr")
 del containers[0]
 container = containers[0]
 
-
+filename = "1999-2000.csv"
+f = open(filename, "w")
+headers = "month, date, start, v_name, v_points, h_name, h_points, ovt, ref1, ref2, ref3, attendance\n"
+f.write(headers)
 
 month_container = page_soup.findAll("div", {"class":"filter"})
 month_container_list = month_container[0].findAll("div")
@@ -21,74 +24,75 @@ month_holder = month_container_list[0]
 for a in month_holder.findAll("a", href = True):month_link = (a["href"])
 full_month_link = "https://www.basketball-reference.com" + month_link
 
-month = month_container_list[0].text.strip()
-month_holder = month_container_list[0]
-for a in month_holder.findAll("a", href = True):month_link = (a["href"])
-full_month_link = "https://www.basketball-reference.com" + month_link
+for x in month_container_list:
+    month = x.text.strip()
+    month_holder = x
+    for a in month_holder.findAll("a", href = True):month_link = (a["href"])
+    full_month_link = "https://www.basketball-reference.com" + month_link
 
-my_url = full_month_link
-uClient = uReq(my_url)
-page_html = uClient.read()
-uClient.close()
-
-page_soup = soup(page_html, "html.parser")
-containers = page_soup.findAll("tr")
-del containers[0]
-container = containers[0]
-
-time.sleep(5)
-
-for container in containers:
-    box_score_container = container.findAll("td", {"data-stat":"box_score_text"})[0]
-    for link in box_score_container:
-        foul_page_link = (link.get("href"))
+    my_url = full_month_link
+    uClient = uReq(my_url)
+    page_html = uClient.read()
+    uClient.close()
+    
+    page_soup = soup(page_html, "html.parser")
+    containers = page_soup.findAll("tr")
+    del containers[0]
+    container = containers[0]
+    
+    time.sleep(5)
+    
+    for container in containers:
         
-    full_foul_page_link = "https://www.basketball-reference.com/boxscores/pbp/" + foul_page_link
-    foul_page_url = full_foul_page_link
-    foulClient = uReq(foul_page_url)
-    foul_page_html = foulClient.read()
-    foulClient.close()
-    foul_page_soup = soup(foul_page_html, "html.parser")
+        date_container = container.findAll("th", {"data-stat":"date_game"})
+        date = date_container[0].text
+            
+        start = "NA"
+        
+        vistor_container = container.findAll("td", {"data-stat":"visitor_team_name"})
+        v_name = vistor_container[0].text
+        
+        vistor_pts_container = container.findAll("td", {"data-stat":"visitor_pts"})
+        v_pts = vistor_pts_container[0].text
+        
+        home_name_container = container.findAll("td", {"data-stat":"home_team_name"})
+        h_name = home_name_container[0].text
+        
+        home_pts_container = container.findAll("td", {"data-stat":"home_pts"})
+        h_pts = home_pts_container[0].text
+        
+        overtime_container = container.findAll("td", {"data-stat":"overtimes"})
+        ovt = overtime_container[0].text
+        
+        box_score_container = container.findAll("td", {"data-stat":"box_score_text"})[0]
+        for link in box_score_container:
+            ref_page_link = (link.get("href"))
     
-    table = foul_page_soup.findAll("div",{"class":"overthrow table_container"})
-    foul_table = table.findAll('tr')
-    
-    filename = foul_page_link[0:12] + '.csv'
-    f = open(filename, "w")
-    headers = "date, v_name, v_points, h_name, h_points, ovt\n"
-    f.write(headers)
-    
-    date_container = container.findAll("th", {"data-stat":"date_game"})
-    date = date_container[0].text
-    
-    vistor_container = container.findAll("td", {"data-stat":"visitor_team_name"})
-    v_name = vistor_container[0].text
-    
-    vistor_pts_container = container.findAll("td", {"data-stat":"visitor_pts"})
-    v_pts = vistor_pts_container[0].text
-    
-    home_name_container = container.findAll("td", {"data-stat":"home_team_name"})
-    h_name = home_name_container[0].text
-    
-    home_pts_container = container.findAll("td", {"data-stat":"home_pts"})
-    h_pts = home_pts_container[0].text
-    
-    overtime_container = container.findAll("td", {"data-stat":"overtimes"})
-    ovt = overtime_container[0].text
-
-    
-
-
-    foul_page_url = full_foul_page_link
-    foulClient = uReq(foul_page_url)
-    foul_page_html = foulClient.read()
-    foulClient.close()
-    foul_page_soup = soup(foul_page_html, "html.parser")
-
-    foul_table = table.findAll('tr')
-    
-    
-    
-    f.write(month + "," + date.replace(",", "") + "," + start + "," + v_name + "," + v_pts + "," + h_name + "," + h_pts + "," + ovt + "," + ref1 + "," + ref2 + "," + ref3 + "," + attendance.replace(",", "") + "\n")
+        full_ref_page_link = "https://www.basketball-reference.com" + ref_page_link
+        
+        ref_page_url = full_ref_page_link
+        refClient = uReq(ref_page_url)
+        ref_page_html = refClient.read()
+        refClient.close()
+        ref_page_soup = soup(ref_page_html, "html.parser")
+        ref_containers = ref_page_soup.findAll("div",{"class":"overthrow table_container"})
+        
+        ref_container = ref_page_soup.select('a[href*="/referees"]')
+        ref1 = ref_container[0].text
+        ref2 = ref_container[1].text
+        ref3 = ref_container[2].text
+        
+        att_container = ref_page_soup.findAll("div")
+        att_contents = att_container[73].contents
+        att_string = [""]
+        for x in att_contents:
+            att_string.append(x.string)
+        att_string_fixed = [x for x in att_string if x is not None]
+        if "Attendance:" in att_string_fixed:
+            attendance = att_string_fixed[att_string_fixed.index("Attendance:")+1].strip()
+        else:
+            attendance = "NA"
+        
+        f.write(month + "," + date.replace(",", "") + "," + start + "," + v_name + "," + v_pts + "," + h_name + "," + h_pts + "," + ovt + "," + ref1 + "," + ref2 + "," + ref3 + "," + attendance.replace(",", "") + "\n")
     
 f.close()
