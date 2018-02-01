@@ -107,12 +107,12 @@ for x in month_container_list:
         for i in range(0, len(foul_list)):
             foul_list_split = foul_list[i].replace('\n', ' ').split()
             for j in foul_list_split:
-                if j == 'foul':
+                if j == 'foul' or j == 'foul)':
                     x = foul_list_split.index(j)
                     y = x - 1
                     foul_type = foul_list_split[y]
             for k in foul_list_split:
-                if k == '(drawn':
+                if k == '(drawn' or k == 'drawn':
                     x = foul_list_split.index(k)
                     y = x + 2
                     z = x + 3
@@ -154,6 +154,6 @@ for x in month_container_list:
                 foul_quarter = '4th quarter'
             f.write(date.replace(",", "") + "," + v_name + "," + v_pts + "," + h_name + "," + h_pts + "," + ovt + ","  +  foul_team + "," + foul_type + "," + foul_by + "," + foul_drawn + "," + foul_quarter + "," + foul_score + "," + "\n")   
         
-        time.sleep(5)
+        time.sleep(3)
 
 f.close()
