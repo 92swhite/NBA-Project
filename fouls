@@ -83,21 +83,31 @@ def who_on_who(sentence):
                     foul_drawn = i
         if len(y) > 2:
             y = list(set(y))
-            if sentence.index(y[0]) > sentence.index(y[1]):
-                foul_drawn = y[0]
-                foul_by = y[1]
+            if len(y) < 2:
+                foul_drawn = 'NA'
+                if 'team' in sentence.lower():
+                    foul_by = 'Team'
+                else:
+                    foul_by = y[0]
+                    for i in players_list:
+                        if foul_by.split()[1].lower() in i.lower():
+                            foul_by = i
             else:
-                foul_drawn = y[1]
-                foul_by = y[0]
-            for i in players_list:
-                if foul_by.split()[1].lower() in i.lower():
-                    foul_by = i
-            for i in players_list:
-                if foul_drawn.split()[1].lower() in i.lower():
-                    foul_drawn = i
+                if sentence.index(y[0]) > sentence.index(y[1]):
+                    foul_drawn = y[0]
+                    foul_by = y[1]
+                else:
+                    foul_drawn = y[1]
+                    foul_by = y[0]
+                for i in players_list:
+                    if foul_by.split()[1].lower() in i.lower():
+                        foul_by = i
+                for i in players_list:
+                    if foul_drawn.split()[1].lower() in i.lower():
+                        foul_drawn = i
         
 
-my_url = 'https://www.basketball-reference.com/leagues/NBA_2008_games.html'
+my_url = 'https://www.basketball-reference.com/leagues/NBA_2010_games.html'
 print(my_url)
 uClient = uReq(my_url)
 page_html = uClient.read()
