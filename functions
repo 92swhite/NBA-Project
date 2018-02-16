@@ -1,0 +1,107 @@
+getwd()
+temp = list.files(pattern="*.csv")
+df <- NULL
+get_data <- function(temp){
+  for (i in temp){
+    x <- read.csv(i, stringsAsFactors = F)
+    test <- strsplit(x$foul_score, 'score: ')
+    test <- unlist(lapply(test, '[', 2))
+    test2 <- strsplit(test, '-')
+    test2 <- unlist(lapply(test2, '['))
+    test3 <- NULL
+    for (i in seq(1, length(test2), 2)){
+      test3 <- c(test3, (as.numeric(test2[i]) - as.numeric(test2[(i + 1)])))
+    }
+    x$foul_score_diff <- test3
+    x$mean <- mean(x$foul_score_diff)
+    x$sd <- sd(x$foul_score_diff)
+    df <<- rbind(df, x)
+  }
+}
+
+fix_time <- function(y){
+  for (i in 1:length(y$foul_time)){
+    x <- strsplit(y$foul_time[i], ':')
+    if (length(unlist(strsplit(x[[1]][1], ''))) < 2){
+      x[[1]][1] <- gsub(' ', '' , paste('0', x[[1]][1]))
+    }
+    if (length(unlist(strsplit(x[[1]][2], ''))) < 2){
+      x[[1]][2] <- gsub(' ' , '', paste(x[[1]][2], 0))
+    }
+    y$foul_time[i] <<- (gsub(' ', '', paste(x[[1]][1], ':', x[[1]][2])))
+  }
+}
+
+# actually fixes time?
+for (i in 1:length(df$foul_time)){
+  x <- strsplit(df$foul_time[i], ':')
+  if (length(unlist(strsplit(x[[1]][1], ''))) < 2){
+    x[[1]][1] <- gsub(' ', '' , paste('0', x[[1]][1]))
+  }
+  if (length(unlist(strsplit(x[[1]][2], ''))) < 2){
+    x[[1]][2] <- gsub(' ' , '', paste(x[[1]][2], 0))
+  }
+  print(df$foul_time[i])
+  print(x)
+  df$foul_time[i] <- (gsub(' ', '', paste(x[[1]][1], ':', x[[1]][2])))
+}
+
+# give foul_time_dec
+for (i in 1:length(df$foul_time)){
+  x <- strsplit(df$foul_time, ':')
+  df$foul_time_dec[i] <- as.numeric(x[[i]][1]) + as.numeric(x[[i]][2])/60
+}
+
+length(df$date[which(df$foul_time_dec <= 2 & df$foul_quarter == '4th quarter') ])
+length(df$date[which(df$foul_time_dec <= 2) ])
+21/70
+# 30% of fouls in the last two minutes take place in the 4th quarter
+
+length(df$date)
+70/308
+21/308
+# 22.72% of fouls take place in the last two minutes
+# 6.82% of fouls take place in the last two minutes of the 
+## 4th quarter
+
+# gets list of visitor teams for each date
+unique(df$v_name[df$date == unique(df$date)])
+
+# gets the amount of fouls called on a team per game
+a <- which(df$date == 'Tue Nov 2 2004' & df$v_name == 'Sacramento Kings')
+length(which((df$foul_team[a] == 'Sacramento Kings') == T))
+length(which((df$foul_team[a] == 'Sacramento Kings') == F))
+length()
+
+# gets amount of fouls for each team for each game, generically
+a <- df$foul_team[df$date == unique_dates[1] & df$v_name == unique_teams[3]]
+length(which((a == unique_teams[3]) == T))
+length(which((a == unique_teams[3]) == F))
+
+# gets fouls for each team for each game, works
+unique_dates <- unique(df$date)
+for (i in 1:length(unique_dates)){
+  unique_teams <- NULL
+  unique_teams <- c(unique_teams, df$v_name[which(df$date == unique_dates[i])])
+  unique_teams <- unique(unique_teams)
+  for (j in 1:length(unique_teams)){
+    print(i)
+    a <- df$foul_team[df$date == unique_dates[i] & df$v_name == unique_teams[j]]
+    v_fouls <<- length(which((a == unique_teams[j]) == T))
+    h_fouls <<- length(which((a == unique_teams[j]) == F))
+  }
+}
+
+# gets fouls in last 2 minutes of the 4th quarter
+unique_dates <- unique(df$date)
+for (i in 1:length(unique_dates)){
+  unique_teams <- NULL
+  unique_teams <- c(unique_teams, df$v_name[which(df$date == unique_dates[i])])
+  unique_teams <- unique(unique_teams)
+  for (j in 1:length(unique_teams)){
+    print(i)
+    a <- df$foul_team[df$date == unique_dates[i] & df$v_name == unique_teams[j] & df$foul_time_dec <= 2 & df$foul_quarter == '4th quarter']
+    v_fouls <<- length(which((a == unique_teams[j]) == T))
+    h_fouls <<- length(which((a == unique_teams[j]) == F))
+  }
+}
