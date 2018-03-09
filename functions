@@ -1,6 +1,8 @@
 getwd()
+setwd('I:\\NBA ref project\\Redux\\New excel fouls')
 temp = list.files(pattern="*.csv")
 df <- NULL
+qn <- c(paste(c('1st', '2nd', '3rd', '4th'), 'quarter'))
 get_data <- function(temp){
   for (i in temp){
     x <- read.csv(i, stringsAsFactors = F)
@@ -15,6 +17,82 @@ get_data <- function(temp){
     x$foul_score_diff <- test3
     x$mean <- mean(x$foul_score_diff)
     x$sd <- sd(x$foul_score_diff)
+    y <- strsplit(x$foul_time, ':')
+    for (i in 1:length(x$foul_time)){
+      r <- strsplit(x$foul_time[i], ':')
+      if (length(unlist(strsplit(r[[1]][1], ''))) < 2){
+        r[[1]][1] <- gsub(' ', '' , paste('0', r[[1]][1]))
+      }
+      if (length(unlist(strsplit(r[[1]][2], ''))) < 2){
+        r[[1]][2] <- gsub(' ' , '', paste(r[[1]][2], 0))
+      }
+      print(x$foul_time[i])
+      print(r)
+      x$foul_time[i] <- (gsub(' ', '', paste(r[[1]][1], ':', r[[1]][2])))
+    }
+    dec_holder <- NULL
+    dec_holder <- as.numeric(lapply(y, "[", 1)) + as.numeric(lapply(y, "[", 2))/60
+    x$foul_time_dec <- dec_holder
+    x$v_fc <- length(which(x$foul_team == x$v_name))
+    x$v_fq <- length(which(x$foul_team == x$v_name & x$foul_quarter == '4th quarter'))
+    x$v_2m <- length(which(x$foul_team == x$v_name & x$foul_quarter == '4th quarter' & x$foul_time_dec <= 2))
+    x$h_fc <- length(which(x$foul_team == x$h_name))
+    x$h_fq <- length(which(x$foul_team == x$h_name & x$foul_quarter == '4th quarter'))
+    x$h_2m <- length(which(x$foul_team == x$h_name & x$foul_quarter == '4th quarter' & x$foul_time_dec <= 2))
+    x$winner_hv <- NA
+    x$winner_hv[which(x$v_points < x$h_points)] <- 'h'
+    x$winner_hv[which(x$v_points > x$h_points)] <- 'v'
+    x$v_addF <- 0
+    x$h_addF <- 0
+    for(j in 1:length(x$date)){
+      if(as.character(x$foul_team[j]) == as.character(x$v_name[j])){
+        x$v_addF[j] <- length(x$v_addF[which(x$v_addF != 0)]) + 1
+      } else {
+        x$h_addF[j] <- length(x$h_addF[which(x$h_addF != 0)]) + 1
+      }
+    }
+    x$v_addF[which(x$v_addF == 0)[-1]] <- NA
+    x$h_addF[which(x$h_addF == 0)[-1]] <- NA
+    x$v_addP <- 0
+    x$h_addP <- 0
+    for (j in 1:length(x$date)){
+      for (k in qn){
+        if((as.character(x$foul_team[j]) == as.character(x$v_name[j])) 
+           & x$foul_quarter[j] == k){
+          x$v_addP[j] <- length(x$v_addP[which(x$v_addP != 0 
+                                               & x$foul_quarter == k)]) + 1
+        } else if ((as.character(x$foul_team[j]) == as.character(x$h_name[j])) 
+                   & x$foul_quarter[j] == k) {
+          x$h_addP[j] <- length(x$h_addP[which(x$h_addP != 0
+                                               & x$foul_quarter == k)]) + 1
+        }
+      }
+    }
+    for(k in qn){
+      x$v_addP[which(x$v_addP == 0 & x$foul_quarter == k)][-1] <- NA
+      x$h_addP[which(x$h_addP == 0 & x$foul_quarter == k)][-1] <- NA
+    }
+    q4 <- which(x$foul_quarter == qn[4])
+    a <- x$foul_time_dec[which(x$foul_quarter == qn[4])]
+    b <- a - c(a[-1], 0)
+    if((length(which(b < 0)) == 1) == T){
+      x$foul_quarter[q4][which(b < 0)[1]:length(x$foul_quarter[q4])] <- 'OT'
+    }
+    if((length(which(b < 0)) == 2) == T){
+      x$foul_quarter[q4][which(b < 0)[1]:length(x$foul_quarter[q4])] <- 'OT'
+      x$foul_quarter[q4][which(b < 0)[2]:length(x$foul_quarter[q4])] <- '2OT'
+    }
+    if((length(which(b < 0)) == 3) == T){
+      x$foul_quarter[q4][which(b < 0)[1]:length(x$foul_quarter[q4])] <- 'OT'
+      x$foul_quarter[q4][which(b < 0)[2]:length(x$foul_quarter[q4])] <- '2OT'
+      x$foul_quarter[q4][which(b < 0)[3]:length(x$foul_quarter[q4])] <- '3OT'
+    }
+    if((length(which(b < 0)) == 4) == T){
+      x$foul_quarter[q4][which(b < 0)[1]:length(x$foul_quarter[q4])] <- 'OT'
+      x$foul_quarter[q4][which(b < 0)[2]:length(x$foul_quarter[q4])] <- '2OT'
+      x$foul_quarter[q4][which(b < 0)[3]:length(x$foul_quarter[q4])] <- '3OT'
+      x$foul_quarter[q4][which(b < 0)[4]:length(x$foul_quarter[q4])] <- '4OT'
+    }
     df <<- rbind(df, x)
   }
 }
@@ -105,3 +183,36 @@ for (i in 1:length(unique_dates)){
     h_fouls <<- length(which((a == unique_teams[j]) == F))
   }
 }
+
+# for real gets time dec
+x <- strsplit(df$foul_time, ':')
+foul_time_dec <- as.numeric(lapply(x, "[", 1)) + as.numeric(lapply(x, "[", 2))/60
+df$foul_time_dec <- foul_time_dec
+
+# makes master df of fouls by quarter
+fq <- data.frame(foul_type = unique(df$foul_type))
+t_list <- list(t1, t2, t3, t4)
+for(j in 1:length(t_list)){
+  t <- as.data.frame(t_list[j])
+  for(i in 1:length(fq$foul_type)){
+    if(any(as.character(t$Var1) == as.character(fq$foul_type[i]))){
+      x <- which(as.character(t[, 1]) == as.character(fq$foul_type[i]))
+      fq$qq[i] <- t[x, 2]
+    } else {
+      fq$qq[i] <- NA
+    }
+  }
+  colnames(fq)[j + 1] <- paste0('q', j)
+}
+
+
+for(i in 1:length(fq$foul_type)){
+  fq$total[i] <- sum(fq[i, 2:5], na.rm = T)
+}
+fq
+
+# makes master df of fouls by quarter, percentage
+
+fqp <- fq
+fqp[, 2:5] <- fqp[ , 2:5]/fqp[, 6]
+fqp
