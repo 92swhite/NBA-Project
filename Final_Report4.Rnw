@@ -1,0 +1,903 @@
+\documentclass[a4paper]{article}
+
+\usepackage{graphics,latexsym,geometry,amsmath,bibunits,makeidx,fancyhdr}
+\usepackage[authoryear,round]{natbib}
+\usepackage{graphicx}
+\usepackage{enumerate}
+\usepackage{hyperref}
+\usepackage{color} 
+\usepackage{listings}
+\usepackage{inconsolata}
+\usepackage{multicol}
+\def\changemargin#1#2{\list{}{\rightmargin#2\leftmargin#1}\item[]}
+\let\endchangemargin=\endlist 
+\setlength{\parskip}{1em}
+
+<<echo=FALSE>>=
+  options(width=60)
+
+  listing <- function(x, options) {
+    paste("\\begin{lstlisting}[basicstyle=\\ttfamily,breaklines=true]\n",
+      x, "\\end{lstlisting}\n", sep = "")
+  }
+  knit_hooks$set(source=listing, output=listing)
+@
+
+\pagestyle{fancy}
+\begin{document}
+
+\title{Final Report} 
+\date{May 4, 2017}
+\author{Spenser White}
+
+\maketitle
+
+
+
+<<echo=FALSE>>=
+load('df_fouls.RData')
+@
+
+\begin{center}
+\begin{changemargin}{1.5cm}{1.5cm} 
+\textbf{Abstract}:This research investigates if opponents and quarter of the basketball game are significant factors in determining the number of fouls called against the Denver Nuggets during a National Basketball Association game.  Poisson processes are identified as reasonable models for sequences of fouls called against the Nuggets, so we use a Poisson regression model to identify differences in foul intensity with respect to our factors of interest.  We find that both factors have significant effects.  For comparison, we also fit a similar model for each of the Northwest Division teams.  This information is useful in helping teams assess their play style and improve on their fouling tendencies.
+\end{changemargin}
+\end{center}
+
+\section{Introduction}
+
+This project seeks to analyze the effect differences in fouling tendencies among NBA teams, specifically the Denver Nuggets. The question asked in this study is \lq What is the foul intensity of the Nuggets and the teams they play? \rq \ with the hypothesized answer that they are all equal. We examine the change of the response factor, number of fouls, by looking at how it is effected by the factors of interest, team and quarter of play. 
+
+By analyzing the fouling tendencies of the Denver Nuggets, when matched against teams in the Northwest Division, we can provide the team with valuable insight into their own behavior. This can lead to a competitive advantage against the teams studied, as they will know when it safe to be more aggressive or when it is wise to play closer to the chest. 
+
+For a brief view of the complete dataset, see A1a. For the dataset used on the Denver Nuggets division, see A1b.
+
+\section{Definitions}
+
+\indent For this project we modelled time sequences of fouls using the Poisson process. This was decided on after exploratory analysis of the model revealed a uniform distribution of fouls across the time span 9.5 minutes remaining to 1 minute remaining within every quarter of play. The term \lq foul intensity \rq \ is used here in reference to the value of $\lambda$, which is the mean value of a Poisson distribution. Specifically:
+
+\noindent $\hat \lambda _n = \frac{1}{n} \sum_{j = 1}^{n} x_j$
+
+
+To use a Poisson we first collected the data in such a fashion that it fulfilled the requirements of a counting process. The underlying assumptions of a counting process are:
+
+\noindent $i) N(t) \ge 0$.\\
+$ii) N(t)$ is integer valued.\\
+$iii)$ if $s < t$, then $N(s) \le N(t)$.\\
+$iv)$ For $s < t$, $N(t) - N(s)$ equals the number of events that have occurred in the interval $(s, t)$. \\
+
+These assumptions are intrinsically satisfied for our data; there can never be less than 0 fouls in a quarter, the number of fouls can only increase by 1 at a time, and the number of fouls in a quarter increase in a positive additive fashion. Once the counting process assumptions have been met, we can use the Poisson model to examine our data, if the assumptions of the Poisson model are met. 
+
+The assumptions of the Poisson model are:
+
+\noindent $i) N(0) = 0$.\\
+$ii)$ The process has independent increments.\\
+$iii)$ The number of events in any interval of length $t$ is Poisson distributed with mean $\lambda t$. That is, for all $s, t \ge 0$\\
+
+\noindent $P{N(t + s) - N(s) = n} = \frac{({\lambda t})^n}{n!} e^{-\lambda t},$ for $n = 0,1,\dots$
+
+Again, the data we collected fits these assumptions well. The number of fouls at time 0 is 0, where we define time 0 to begin at sub 2.5 minutes from the beginning of the quarter (the reasoning for which is explained below). There is a possibility, however, that the second assumption is not met in that while any foul is ideally not related to the occurrence of any past foul, in reality many choices regarding future foul-drawing behavior are made on the past amount of fouls called. For example, a player may become upset at a past call and play more aggressively out of frustration, making his future fouling rate dependent on his past fouling rate. Another example is that coaches often remove players approaching a fouling limit, which alters the amount of future fouls likely to be committed by said team.
+
+We have pressed forward with using a Poisson model, despite these possible objections, as the exploratory analysis of the data revealed a uniform distribution consistently present within the data for consistent time periods across quarters. A result of the Poisson model is that for any time interval $N(t) = n$, the distribution of the $n$ random variables should be uniform on the interval $(0, t)$. This was observed for the interval $(9.5, 1)$ in minutes remaining for every quarter of play, and points to a Poisson process existing within that time frame. That is the reason we have set 9.5 equal to 0 in the counting of fouls in our data. See graph 1 for a visual representation.
+
+<<echo=F>>=
+layout(mat = matrix(c(1,1,2,3,4,5), nrow = 3, ncol = 2, byrow = T))
+plot(0, 0, type = 'n', main = 'Graph 1', axes = F, xlab = NA, ylab = NA, sub = 'All NBA')
+hist(df$foul_time_dec[which(df$foul_quarter == '1st quarter')], main = '1st Quarter Fouls', xlab = 'time remaining (min)', xlim = c(12, 0))
+hist(df$foul_time_dec[which(df$foul_quarter == '2nd quarter')], main = '2nd Quarter Fouls', xlab = 'time remaining (min)', xlim = c(12, 0))
+hist(df$foul_time_dec[which(df$foul_quarter == '3rd quarter')], main = '3rd Quarter Fouls',  xlab = 'time remaining (min)', xlim = c(12, 0))
+hist(df$foul_time_dec[which(df$foul_quarter == '4th quarter')], main = '4th Quarter Fouls', xlab = 'time remaining (min)', xlim = c(12, 0))
+@
+
+Having observed this data and concluded that a Poisson process was appropriate for explaining what was seen, a test was carried out to determine if the value of $\lamdba$ differed for the Denver Nuggets depending on the  team they played against.
+
+For clarity: Our response variable is the amount of fouls called on the Denver Nuggets. The factors of interest are opposing team (with a possible 4 levels being the Utah Jazz, the Oklahoma City Thunder, the Minnesota Timberwolves, and the Portland Trail Blazers) and quarter of play (with 4 possible levels, being 1st quarter, 2nd quarter, 3rd quarter, and 4th quarter). 
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{rrrrrr}
+  \hline
+ & NBA & POR & OKC & MIN & UTA \\ 
+  \hline
+Full Game & 0.46 & 0.44 & 0.49 & 0.46 & 0.48 \\ 
+  Quarter 1 & 0.39 & 0.39 & 0.41 & 0.39 & 0.40 \\ 
+  Quarter 2 & 0.47 & 0.42 & 0.51 & 0.44 & 0.50 \\ 
+  Quarter 3 & 0.49 & 0.50 & 0.49 & 0.47 & 0.49 \\ 
+  Quarter 4 & 0.50 & 0.48 & 0.54 & 0.54 & 0.51 \\ 
+   \hline
+   \hline
+\end{tabular}
+\end{table}
+
+See A2a for code.
+See A2b for generic function.
+
+\noindent $H_0: \lambda_{q1} = \lambda_{q2} = \lambda_{q3} = \lambda_{q4} \\
+$H_a: H_0$ is not true. \\
+testing at $\alpha = .10$ \\
+\\
+See A3 for code. 
+\\
+<<echo=F>>=
+plot(x = c(1,2,3,4), y = c(.48, .62, .63, .69), type = 'b', lwd = 2, ylim = c(.4, .8), lty = 2, pch = 18, cex = 1.5, xlab = 'Quarter', ylab = 'Foul Intensity', las = 1, main = 'Denver Nuggets Foul Intensity by Quarter by Team', axes = F)
+axis(side = 1, at = c(1,2,3,4))
+axis(side = 2, at = c(.4, .5, .6, .7, .8), las = 1)
+lines(x = c(1:4), y = c(.45, .56, .62, .68), type = 'b', lwd = 2, col = 'red', lty = 2, pch = 18, cex = 1.5)
+lines(x = c(1:4), y = c(.52, .66, .71, .73), type = 'b', lwd = 2, col = 'blue', lty = 2, pch = 18, cex = 1.5)
+lines(x = c(1:4), y = c(.5, .57, .59, .73), type = 'b', lwd = 2, col = 'green', lty = 2, pch = 18, cex = 1.5)
+lines(x = c(1:4), y = c(.5, .68, .65, .75), type = 'b', lwd = 2, col = 'orange', lty = 2, pch = 18, cex = 1.5)
+legend(x = 1, y = .8, lwd = 2, box.lwd = 2, legend = c('NBA', 'POR', 'OKC', 'MIN', 'UTA'), lty = 2, col = c('black', 'red', 'blue', 'green', 'orange'))
+@
+
+<<echo=F>>=
+par(mfrow = c(1,2))
+boxplot(fouls ~ quarter, data = df_model, main = 'DEN fouls by quarter', las = 1)
+
+boxplot(fouls ~ opp_name, data = df_model, main = 'DEN fouls by Opponenet', las = 1, xaxt = 'n')
+axis(side = 1, labels = c('MIN', 'OKC', 'POR', 'UTA'), at = c(1,2,3,4))
+par(mfrow = c(1,1))
+@
+
+Tukey's test was ran on the data set, concerning fouls committed as predicted by quarter and fouls committed as predicted by opponent The ANOVA test for fouls predicted by team came back insignificant, but the ANOVA for fouls committed as predicted by quarter was significant. The Tukey's table for that ANOVA can be seen below.
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{rllrrrr}
+  \hline
+ & term & comparison & estimate & conf.low & conf.high & adj.p.value \\ 
+  \hline
+1 & quarter & 2nd-1st & 0.57 & 0.08 & 1.05 & 0.01 \\ 
+  2 & quarter & 3rd-1st & 0.75 & 0.26 & 1.23 & 0.00 \\ 
+  3 & quarter & 4th-1st & 1.02 & 0.54 & 1.51 & 0.00 \\ 
+  4 & quarter & 3rd-2nd & 0.18 & -0.31 & 0.67 & 0.78 \\ 
+  5 & quarter & 4th-2nd & 0.46 & -0.03 & 0.94 & 0.07 \\ 
+  6 & quarter & 4th-3rd & 0.28 & -0.21 & 0.76 & 0.46 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\begin{center}
+\begin{tabular}{ c c c c }
+ 1st & 2nd & 3rd & 4th \\ 
+   &   &   & \\\cline{2-3}
+   & & & \\\cline{3-4}
+\end{tabular}
+\end{center}
+
+
+The results of the test show that 2nd and 3rd quarters aren't very different, and neither are the 3rd and 4th quarters. We see strong differences between every other quarter, however, so there does in fact appear to be a difference in fouls as sorted by quarter.
+
+Assuming, then, that the assumptions of the Poisson process are met we built a Poisson regression model to describe the events seen in the data. The model uses binary qualitative variables to predict the foul count for a combination of the factors of interest. Our factors of interest for this model, after exploratory analysis showed them to be of potential significance, are quarter of play and team played against. Specifically, we are interested in the North-West division of the NBA, which the Denver Nuggets are a part of, for teams played against. The teams within the North-West Division are the Portland Trailblazers (POR), the Minnesota Timberwolves (MIN), the Utah Jazz (UTA), and the Oklahoma City Thunder (OKC). 
+
+The final model we used can be written as follows:
+
+$Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + \beta_3X_3 + \beta_4X_4 + \beta_5X_5 + \beta_6X_6$
+
+where $\beta_0$ represents the intercept, which further represents the base model of DEN against MIN in the first quarter. All other values within the model are then compared to this. Furthermore, $\beta_1 - \beta_6$ represent the regression coefficients of our model, which show by how much the foul count, Y, can be expected to change if that $\beta$'s corresponding X value is included in the model.
+
+The X values are:
+\begin{multicols}{2}
+\[
+    X_1= 
+\begin{cases}
+    1,& \text{if the opponent is OKC}\\
+    0,              & \text{otherwise}
+\end{cases}
+\]
+
+\[
+    X_2= 
+\begin{cases}
+    1,& \text{if the opponent is POR}\\
+    0,              & \text{otherwise}
+\end{cases}
+\]
+
+\[
+    X_3= 
+\begin{cases}
+    1,& \text{if the opponent is UTA}\\
+    0,              & \text{otherwise}
+\end{cases}
+\]
+
+\[
+    X_4= 
+\begin{cases}
+    1,& \text{if it is the first quarter}\\
+    0,              & \text{otherwise}
+\end{cases}
+\]
+
+\[
+    X_5= 
+\begin{cases}
+    1,& \text{if it is the second quarter}\\
+    0,              & \text{otherwise}
+\end{cases}
+\]
+
+\[
+    X_6= 
+\begin{cases}
+    1,& \text{if it is the third quarter}\\
+    0,              & \text{otherwise}
+\end{cases}
+\]
+\end{multicols}
+An example of interpreting the output of this model can be found in the next section.
+
+\section{Design and Justification}
+
+As seen in the section above, the final model to explain the number of fouls the Denver Nugget accrue over the course of a quarter was an additive Poisson model. An additive model was preferred over an interaction model, as the inclusion of interaction terms resulted in null significance for nearly every coefficient term. See Table 3 below for a coefficients summary of the interactive model. 
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{rrrrr}
+  \hline
+ & Estimate & Std. Error & z value & Pr($>$$|$z$|$) \\ 
+  \hline
+(Intercept) & 1.2040 & 0.0791 & 15.23 & 0.0000 \\ 
+  Oklahoma City Thunder & 0.0442 & 0.1245 & 0.35 & 0.7228 \\ 
+  Portland Trail Blazers & -0.0172 & 0.1129 & -0.15 & 0.8791 \\ 
+  Utah Jazz & 0.0273 & 0.1116 & 0.24 & 0.8069 \\ 
+  2nd Quarter & 0.1233 & 0.1085 & 1.14 & 0.2557 \\ 
+  3rd Quarter & 0.1771 & 0.1072 & 1.65 & 0.0984 \\ 
+  4th Quarter & 0.3230 & 0.1038 & 3.11 & 0.0019 \\ 
+  Oklahoma City Thunder:quarter2nd & 0.0924 & 0.1688 & 0.55 & 0.5842 \\ 
+  Portland Trail Blazers:quarter2nd & -0.0483 & 0.1559 & -0.31 & 0.7567 \\ 
+  Utah Jazz:quarter2nd & 0.0936 & 0.1516 & 0.62 & 0.5370 \\ 
+  Oklahoma City Thunder:quarter3rd & -0.0072 & 0.1690 & -0.04 & 0.9660 \\ 
+  Portland Trail Blazers:quarter3rd & 0.0742 & 0.1518 & 0.49 & 0.6248 \\ 
+  Utah Jazz:quarter3rd & 0.0145 & 0.1511 & 0.10 & 0.9236 \\ 
+  Oklahoma City Thunder:quarter4th & -0.0493 & 0.1645 & -0.30 & 0.7645 \\ 
+  Portland Trail Blazers:quarter4th & -0.0973 & 0.1498 & -0.65 & 0.5163 \\ 
+  Utah Jazz:quarter4th & -0.0863 & 0.1479 & -0.58 & 0.5598 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+
+As such, an additive model was used to explain the data instead. See Table 4 below for the summary output.
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{rrrrr}
+  \hline
+ & Estimate & Std. Error & z value & Pr($>$$|$z$|$) \\ 
+  \hline
+(Intercept) & 1.2068 & 0.0517 & 23.32 & 0.0000 \\ 
+  Oklahoma City Thunder & 0.0515 & 0.0573 & 0.90 & 0.3689 \\ 
+  Portland Trail Blazers & -0.0363 & 0.0523 & -0.69 & 0.4871 \\ 
+  Utah Jazz & 0.0303 & 0.0514 & 0.59 & 0.5556 \\ 
+  2nd Quarter & 0.1554 & 0.0564 & 2.75 & 0.0059 \\ 
+  3rd Quarter & 0.1999 & 0.0559 & 3.58 & 0.0003 \\ 
+  4th Quarter & 0.2651 & 0.0551 & 4.82 & 0.0000 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+
+Although not significant in the model, the team factor remains in this final model in an effort to detract from any over signifying quarter may have on the response. It is apparent from Table 4 above that while there may not be a significant change in fouls as according to team there is some level of variance caused by this factor. A more clear example can be seen in Graph 1, with the Utah Jazz. While the Jazz are following the overall trend of the data, they deviate in being the only team to cause a decrease in foul intensity in the third quarter. So, while their effects may not be pronounced enough to find significant difference between the teams, this factor's inclusion in the model will help give better results than a model without. 
+
+To read this output, first we must note that model is a logmatic regression, or that the response variable is modeled on the log of the predictors. Then is is clear that to realize the true coefficients of the model we must raise $e$ to the regression results, which will then tell us in the expected amount of fouls per quarter we expect to see given the factors included.
+
+Furthermore, to read the output of this table we must understand the implications of the base model. Being a purely qualitative model, our regression summary output shows us the coefficients of the factors of interest if that level of that factor is to be examined. If we chose to look at non of the factors, and only consider the intercept, then we are left with a model which represents the base to which the rest of the coefficients are comparative to.
+
+An example:
+
+Our $\beta_0$ here represents the expected number of fouls in a certain quarter against a certain team. We will receive only $\beta_0$, and therefore that value, when all other factors in the model are equal to zero. As a result, the intercept represents Denver versus Minnesota in the first quarter. This number is read off the summary as 1.2068. To interpret this model in terms of fouls expected, we raise $e$ to this value, resulting in 3.342771. That is, we expect the Nuggets to commit 3.34 fouls, on average, in the first quarter of play against the Minnesota Timberwolves. 
+
+If we were interested in examining the expected fouls the Nuggets commit against OKC in the third quarter, we could take the sum of $\beta_0$ and the coefficients that OKC and the third quarter represent, in this case 0.0515 and 0.1999 respectively. Then we take $e$ raised to this sum to find the expected number of fouls per minute, which results in 4.298216. See Table 5 for a list of the transformed coefficient estimates. 
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{rlr}
+  \hline
+  & Fouls \\ 
+  \hline
+(Intercept) & 3.34 \\ 
+  4th Quarter & 1.30 \\ 
+  3rd Quarter & 1.22 \\ 
+  2nd Quarter & 1.17 \\ 
+  Oklahoma City Thunder & 1.05 \\ 
+  Utah Jazz & 1.03 \\ 
+  Portland Trail Blazers   & 0.96 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+Note that above in Table 5 that all estimates for each factor are positive, meaning that the amount of fouls in the base model, represented by $\beta_0$, are the lowest amount we expect the Denver Nuggets to commit in any quarter against any North-West Division team. This was incidental, as the levels of factors included in the base model are decided alphabetically. 
+
+To understand the effectiveness of the Poisson regression model we created, two pseudo-$R^2$ values were used - McFadden's and Cox-Snell's. See A5 for an explanation of these values. The results of the pseudo-$R^2$ values are 0.0101 and 0.0394 respectively. These values inspire little confidence in our model and, as a result, it must be said that model appears ineffective in predicting the foul counts of the Denver Nuggets.
+
+\section{Model Testing}
+
+While no model testing was done due to time constraints, we were able to build models for each of the other North-West Division teams in regards to fouls they commit. See tables FILL THIS IN to see the coefficients summary for MIN, POR, UTA, and OKC. 
+
+
+\begin{table}[ht]
+\centering
+\caption{MIN}
+\vspace{5mm}
+\begin{tabular}{rrrrr}
+  \hline
+ & Estimate & Std. Error & z value & Pr($>$$|$z$|$) \\ 
+  \hline
+(Intercept) & 1.2855 & 0.0511 & 25.15 & 0.0000 \\ 
+  Oklahoma City Thunder & -0.1246 & 0.0587 & -2.12 & 0.0339 \\ 
+  Portland Trail Blazers & -0.1215 & 0.0519 & -2.34 & 0.0194 \\ 
+  Utah Jazz & -0.1057 & 0.0517 & -2.04 & 0.0410 \\ 
+  2nd Quarter & 0.1571 & 0.0567 & 2.77 & 0.0056 \\ 
+  3rd Quarter & 0.1907 & 0.0563 & 3.39 & 0.0007 \\ 
+  4th Quarter & 0.1964 & 0.0562 & 3.49 & 0.0005 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{POR}
+\vspace{5mm}
+\begin{tabular}{rrrrr}
+  \hline
+ & Estimate & Std. Error & z value & Pr($>$$|$z$|$) \\ 
+  \hline
+(Intercept) & 1.2224 & 0.0521 & 23.47 & 0.0000 \\ 
+  Minnesota Timberwolves & -0.0910 & 0.0522 & -1.75 & 0.0810 \\ 
+  Oklahoma City Thunder & -0.0394 & 0.0573 & -0.69 & 0.4916 \\ 
+  Utah Jazz & -0.0744 & 0.0517 & -1.44 & 0.1498 \\ 
+  2nd Quarter & 0.1938 & 0.0570 & 3.40 & 0.0007 \\ 
+  3rd Quarter & 0.2327 & 0.0565 & 4.12 & 0.0000 \\ 
+  4th Quarter & 0.2996 & 0.0557 & 5.38 & 0.0000 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{UTA}
+\vspace{5mm}
+\begin{tabular}{rrrrr}
+  \hline
+ & Estimate & Std. Error & z value & Pr($>$$|$z$|$) \\ 
+  \hline
+(Intercept) & 1.3346 & 0.0499 & 26.73 & 0.0000 \\ 
+  Minnesota Timberwolves & -0.1762 & 0.0499 & -3.53 & 0.0004 \\ 
+  Oklahoma City Thunder & -0.0860 & 0.0549 & -1.57 & 0.1175 \\ 
+  Portland Trail Blazers & -0.1838 & 0.0498 & -3.69 & 0.0002 \\ 
+  2nd Quarter & 0.2025 & 0.0556 & 3.64 & 0.0003 \\ 
+  3rd Quarter & 0.2902 & 0.0545 & 5.32 & 0.0000 \\ 
+  4th Quarter & 0.3091 & 0.0543 & 5.69 & 0.0000 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{OKC}
+\vspace{5mm}
+\begin{tabular}{rrrrr}
+  \hline
+ & Estimate & Std. Error & z value & Pr($>$$|$z$|$) \\ 
+  \hline
+(Intercept) & 1.2469 & 0.0628 & 19.85 & 0.0000 \\ 
+  Minnesota Timberwolves & -0.0585 & 0.0636 & -0.92 & 0.3570 \\ 
+  Portland Trail Blazers & -0.2117 & 0.0656 & -3.23 & 0.0013 \\ 
+  Utah Jazz & -0.1032 & 0.0643 & -1.60 & 0.1086 \\ 
+  2nd Quarter & 0.1074 & 0.0691 & 1.55 & 0.1205 \\ 
+  3rd Quarter & 0.2002 & 0.0677 & 2.96 & 0.0031 \\ 
+  4th Quarter & 0.3314 & 0.0658 & 5.04 & 0.0000 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+See A7 for these models.
+
+For all these models the base model was picked to be the team observed against Denver in the first. These additional models show us that while the results might be be non-significant, they are sound in their methodology. 
+
+Studying these results reveals several interesting facts, namely the implication that DEN has the highest foul drawing tendency in the North-West Division and that all teams are progressively committing more fouls as time goes on. Taking tally of the results, every team shows DEN with at least a slight advantage in the foul drawing department, with MIN displaying the highest amount, being significantly more than every other North-West Division team, and POR with only one team slightly crossing the significance threshold. To asses the validity of this, a model was built comparing the number of fouls Denver drawns against opponents, that is fouls that opponents commit against them, and then performing an analysis on that. The results can be seen below.
+
+
+\begin{table}[ht]
+\centering
+\caption{DEN}
+\vspace{5mm}
+\begin{tabular}{rrrrr}
+  \hline
+ & POR & OKC & MIN & UTA \\ 
+  \hline
+1 & 0.41 & 0.41 & 0.40 & 0.50 \\ 
+  2 & 0.49 & 0.46 & 0.53 & 0.52 \\ 
+  3 & 0.51 & 0.56 & 0.53 & 0.59 \\ 
+  4 & 0.53 & 0.50 & 0.50 & 0.59 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+
+Running two ANOVA tests on this new data has interesting results. As with last time, we run one ANOVA examining the fouls as explained by quarter, and one ANOVA examining the fouls as explained by opposing team. Unlike last time, we can see, in Table 11 and Table 12, that there is a significant difference for both. Analyzing using Tukey's we get the results seen below.
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{lrrrrr}
+  \hline
+ & Df & Sum Sq & Mean Sq & F value & Pr($>$F) \\ 
+  \hline
+opp\_name & 3 & 42.16 & 14.05 & 3.82 & 0.0099 \\ 
+  Residuals & 688 & 2531.22 & 3.68 &  &  \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{lrrrrr}
+  \hline
+ & Df & Sum Sq & Mean Sq & F value & Pr($>$F) \\ 
+  \hline
+quarter & 3 & 100.83 & 33.61 & 9.35 & 0.0000 \\ 
+  Residuals & 688 & 2472.55 & 3.59 &  &  \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+<<echo=F>>=
+par(mfrow = c(1,2))
+plot(x = factor(df_model_against$quarter), y = df_model_against$fouls, main = 'Fouls against DEN by quarter', las = 1)
+plot(x = factor(df_model_against$opp_name), y = df_model_against$fouls, main = 'Fouls against DEN by opponent', las = 1, xaxt = 'n')
+axis(side = 1, labels = c('MIN', 'OKC', 'POR', 'UTA'), at = 1:4)
+par(mfrow = c(1,1))
+@
+
+Running Tukey's on this yields the following results.
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{rllrrrr}
+  \hline
+ & term & comparison & estimate & conf.low & conf.high & adj.p.value \\ 
+  \hline
+1 & quarter & 2nd-1st & 0.62 & 0.09 & 1.14 & 0.01 \\ 
+  2 & quarter & 3rd-1st & 0.98 & 0.46 & 1.51 & 0.00 \\ 
+  3 & quarter & 4th-1st & 0.88 & 0.35 & 1.40 & 0.00 \\ 
+  4 & quarter & 3rd-2nd & 0.36 & -0.16 & 0.89 & 0.28 \\ 
+  5 & quarter & 4th-2nd & 0.26 & -0.26 & 0.79 & 0.58 \\ 
+  6 & quarter & 4th-3rd & -0.10 & -0.63 & 0.42 & 0.96 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{rllrrrr}
+  \hline
+ & term & comparison & estimate & conf.low & conf.high & adj.p.value \\ 
+  \hline
+1 & opp\_name & OKC-MIN & -0.04 & -0.61 & 0.53 & 1.00 \\ 
+  2 & opp\_name & POR-MIN & -0.06 & -0.57 & 0.45 & 0.99 \\ 
+  3 & opp\_name & UTA-MIN & 0.52 & 0.01 & 1.03 & 0.04 \\ 
+  4 & opp\_name & POR-OKC & -0.02 & -0.59 & 0.55 & 1.00 \\ 
+  5 & opp\_name & UTA-OKC & 0.56 & -0.01 & 1.13 & 0.06 \\ 
+  6 & opp\_name & UTA-POR & 0.58 & 0.07 & 1.09 & 0.02 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\begin{center}
+\begin{tabular}{ c c c c }
+ 3rd & 2nd & 4th & 1st \\ 
+   &   &   & \\\cline{1-3}
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{ c c c c }
+ OKC & POR & MIN & UTA \\ 
+   &   &   & \\\cline{1-3}
+\end{tabular}
+\end{center}
+
+For both cases we have, according to Tukey's, one stand out case that differs from the norm. For quarters, the first quarter is significantly lower than the others.This means that the Denver Nuggets are fouled about the same amount for quarters 2, 3, and 4, but fouled significantly less during quarter 1. And for opponent the Utah Jazz is significantly higher than the others, which means that The Denver Nuggets draw about the same amount of fouls from each team in the North-West Division, except the Utah Jazz who they draw a significantly higher amount of fouls from.
+
+Having this knowledge it became apparent that a model was needed to explain this phenomena. Since we already have a Poisson regression model used for fouls DEN commits, it only makes sense to use a Poisson model for fouls DEN draws. The model meets all the assumptions of a Poisson distribution in the same way that the first model did. The summary output of the model can be read below in Table 15.
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{rrrrr}
+  \hline
+ & Estimate & Std. Error & z value & Pr($>$$|$z$|$) \\ 
+  \hline
+(Intercept) & 1.2679 & 0.0500 & 25.37 & 0.0000 \\ 
+  quarter2nd & 0.1564 & 0.0542 & 2.89 & 0.0039 \\ 
+  quarter3rd & 0.2382 & 0.0532 & 4.48 & 0.0000 \\ 
+  quarter4th & 0.2155 & 0.0535 & 4.03 & 0.0001 \\ 
+  opp\_nameOklahoma City Thunder & -0.0105 & 0.0567 & -0.18 & 0.8533 \\ 
+  opp\_namePortland Trail Blazers & -0.0147 & 0.0505 & -0.29 & 0.7716 \\ 
+  opp\_nameUtah Jazz & 0.1177 & 0.0489 & 2.41 & 0.0160 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+As expected from the finding using the combination of Tukey's and the prior model, quarter was a significant factor at every level, and opponent was only significant for the Utah Jazz (outside of the base model). The model suggests that the Denver Nuggets draw more fouls as the game goes on, something which was also suggested by the model analyzing their foul committing tendency. Deviating from prior expectations, the model suggests that the Nuggets draw the most fouls against UTA, followed by MIN, then POR, and lastly OKC. This is interesting in that it appears the Nuggets both draw and commit the a high amount of fouls against the Jazz while drawing and committing a low amount of fouls against the Trail Blazers. See Table 16 below for a comparison of the transformed coefficients. 
+
+It should be noted that for the Poisson regression model for fouls DEN draws, the McFadden and Cox-Snell Pseudo-$R&2$ values are 0.0118 and 0.0478 respectively. These values are very low, but still better than the values received for the previous model examining fouls committed. 
+
+\begin{table}[ht]
+\centering
+\caption{}
+\vspace{5mm}
+\begin{tabular}{rrrrr}
+  \hline
+& Committed & Drawn\ \\ 
+  \hline
+(Intercept) & 3.342768 &  3.5532634 \\ 
+  2nd Quarter & 1.168096 & 1.1693038  \\ 
+  3rd Quarter & 1.221269 & 1.2689873  \\ 
+  4th Quarter & 1.303602 & 1.2405063  \\ 
+  Oklahoma City Thunder & 1.052821 &  0.9895707 \\ 
+  Portland Trail Blazers & 0.964313 & 0.9854423 \\ 
+  Utah Jazz & 1.030771 &  1.1249400 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+
+\section{Strengths and Weaknesses of my Approach}
+
+My project, ultimately, failed to reach many of the goals I set out to accomplish. The final models used to explain the response variable of interest does a very poor job of it. As a result the conclusions I come to in my paper are not very applicable to helping the Denver Nuggets gain any advantage over their local competition.
+
+However, what my approach did do right is find solid theoretical grounding for the models used, and used sounds analysis to come to sound, if insignificant, conclusions. My process has a lot of mathematical footing to stand on should it be scrutinized.
+
+The only thing I really think this project needs to have fixed is the final model chosen to explain the data. While a Poisson process is observable from the data, a straight Poisson regression does not seem to be the most appropriate for this data. A Cart model would have been a more likely fit for the data and would do a, hopefully, better job of explaining the phenomenon we looked at here. Additionally, the sheer amount of time data collection took, including compiling time for large set after collection, created a lot of tedious and frustrating setbacks. A more complete and easily accessible data set would have been preferable. 
+
+\section{Further Work}
+
+Given the time, this would be only the first step of a much longer project. I would like to see my work carried on wards to discover what percentage of responsibility fouls have on the outcomes of games. 
+
+Additionally, further work can be done applying the mode built here to different datasets. To create a robust model, we used a massive amount of data that spans several years, which gives conclusions that may not be applicable to real world issues. Taking this model here and applying it to much more focused and smaller samples would provide a lot of utility for teams assesing anything from staff changes to roster line ups to the influence of referee teams.
+
+To create a truly useful review that could review the tendencies of this team, it would be necessary to review tapes of games and count the number of fouls called versus the number of fouls committed but not called. While the Nuggets have an average foul intensity, it may be possible that they are playing abnormally in regards to percentage of fouls caught. I believe this would be a much more fruitful area of focus in determining which alterations to make to team behavior, but the data needed is very vast and beyond my grasp at this point.
+
+
+
+
+\section{Appendix}
+\begin{enumerate}
+\item[A1a]
+
+<<echo=F>>=
+head(df)
+@
+
+\item[A1b]
+
+<<echo=F>>=
+head(df_nugs)
+@
+
+\item[A2a]
+
+<<tidy=T>>=
+#df of lambdas for nugs vs nw div teams
+#NBA
+nba_f <- sum(c(df_nugs$nugs_first_q, 
+               df_nugs$nugs_second_q, 
+               df_nugs$nugs_third_q, 
+               df_nugs$nugs_fourth_q))/(length(df_nugs$nugs_fc)*8.5*4)
+
+nba_1 <- sum(df_nugs$nugs_first_q)/(length(df_nugs$nugs_first_q)*8.5)
+
+nba_2 <- sum(df_nugs$nugs_second_q)/(length(df_nugs$nugs_second_q)*8.5)
+
+nba_3 <- sum(df_nugs$nugs_third_q)/(length(df_nugs$nugs_third_q)*8.5)
+
+nba_4 <- sum(df_nugs$nugs_fourth_q)/(length(df_nugs$nugs_fourth_q)*8.5)
+
+#POR
+por_f <- sum(c(df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[1]]), 
+             df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[1]], 
+             df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[1]], 
+             df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[1]])/(length((df_nugs$nugs_fc[df_nugs$opp_name == nw_div[1]]))*8.5*4)
+
+por_1 <- sum(df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[1]])/(length((df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[1]]))*8.5)
+
+por_2 <- sum(df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[1]])/(length((df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[1]]))*8.5)
+
+por_3 <- sum(df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[1]])/(length((df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[1]]))*8.5)
+
+por_4 <- sum(df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[1]])/(length((df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[1]]))*8.5)
+
+
+#OKC
+okc_f <- sum(c(df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[2]]), 
+             df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[2]], 
+             df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[2]], 
+             df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[2]])/(length((df_nugs$nugs_fc[df_nugs$opp_name == nw_div[2]]))*8.5*4)
+
+okc_1 <- sum(df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[2]])/(length((df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[2]]))*8.5)
+
+okc_2 <- sum(df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[2]])/(length((df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[2]]))*8.5)
+
+okc_3 <- sum(df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[2]])/(length((df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[2]]))*8.5)
+
+okc_4 <- sum(df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[2]])/(length((df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[2]]))*8.5)
+
+
+#MIN
+min_f <- sum(c(df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[3]]), 
+             df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[3]], 
+             df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[3]], 
+             df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[3]])/(length((df_nugs$nugs_fc[df_nugs$opp_name == nw_div[3]]))*8.5*4)
+
+min_1 <- sum(df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[3]])/(length((df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[3]]))*8.5)
+
+min_2 <- sum(df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[3]])/(length((df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[3]]))*8.5)
+
+min_3 <- sum(df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[3]])/(length((df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[3]]))*8.5)
+
+min_4 <- sum(df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[3]])/(length((df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[3]]))*8.5)
+
+
+#UTA
+uta_f <- sum(c(df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[4]]), 
+             df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[4]], 
+             df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[4]], 
+             df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[4]])/(length((df_nugs$nugs_fc[df_nugs$opp_name == nw_div[4]]))*8.5*4)
+
+uta_1 <- sum(df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[4]])/(length((df_nugs$nugs_first_q[df_nugs$opp_name == nw_div[4]]))*8.5)
+
+uta_2 <- sum(df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[4]])/(length((df_nugs$nugs_second_q[df_nugs$opp_name == nw_div[4]]))*8.5)
+
+uta_3 <- sum(df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[4]])/(length((df_nugs$nugs_third_q[df_nugs$opp_name == nw_div[4]]))*8.5)
+
+uta_4 <- sum(df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[4]])/(length((df_nugs$nugs_fourth_q[df_nugs$opp_name == nw_div[4]]))*8.5)
+
+df_lam_nugs <- data.frame('NBA' = c(nba_f, nba_1, nba_2, nba_3, nba_4),
+                          'POR' = c(por_f, por_1, por_2, por_3, por_4), 
+                          "OKC" = c(okc_f, okc_1, okc_2, okc_3, okc_4), 
+                          "MIN" = c(min_f, min_1, min_2, min_3, min_4), 
+                          "UTA" = c(uta_f, uta_1, uta_2, uta_3, uta_4))
+
+@
+
+\item[A2b]
+
+<<tidy=T,highlight=F>>=
+get_lam <- function(team){
+  df_temp <- unique(df[c('date', 'v_name', 'v_points', 'h_name', 'h_points', 
+                         'ovt', 'mean', 'sd', 'winner_hv', 'v_fc', 'v_first_q', 
+                         'v_second_q', 'v_third_q', 'v_fourth_q', 'h_fc', 'h_first_q',
+                         'h_second_q', 'h_third_q', 'h_fourth_q')])
+  
+  for(i in 1:1){
+    
+    df_temp$team_fc <- NA
+    df_temp$opp_fc <- NA
+    df_temp$opp_name <- NA
+    df_temp$team_first_q <- NA
+    df_temp$team_second_q <- NA
+    df_temp$team_third_q <- NA
+    df_temp$team_fourth_q <- NA
+    df_temp$opp_first_q <- NA
+    df_temp$opp_second_q <- NA
+    df_temp$opp_third_q <- NA
+    df_temp$opp_fourth_q <- NA
+    
+    df_temp$team_fc[which(df_temp$h_name == team)] <- df_temp$h_fc[df_temp$h_name == team]
+    df_temp$team_fc[which(df_temp$v_name == team)] <- df_temp$v_fc[df_temp$v_name == team]
+    df_temp$opp_fc[which(df_temp$h_name == team)] <- df_temp$v_fc[df_temp$h_name == team]
+    df_temp$opp_fc[which(df_temp$v_name == team)] <- df_temp$h_fc[df_temp$v_name == team]
+    df_temp$opp_name[which(df_temp$h_name == team)] <- df_temp$v_name[df_temp$h_name == team]
+    df_temp$opp_name[which(df_temp$v_name == team)] <- df_temp$h_name[df_temp$v_name == team]
+    
+    df_temp$team_first_q[which(df_temp$h_name == team)] <- df_temp$h_first_q[df_temp$h_name == team]
+    df_temp$team_first_q[which(df_temp$v_name == team)] <- df_temp$v_first_q[df_temp$v_name == team]
+    df_temp$team_second_q[which(df_temp$h_name == team)] <- df_temp$h_second_q[df_temp$h_name == team]
+    df_temp$team_second_q[which(df_temp$v_name == team)] <- df_temp$v_second_q[df_temp$v_name == team]
+    df_temp$team_third_q[which(df_temp$h_name == team)] <- df_temp$h_third_q[df_temp$h_name == team]
+    df_temp$team_third_q[which(df_temp$v_name == team)] <- df_temp$v_third_q[df_temp$v_name == team]
+    df_temp$team_fourth_q[which(df_temp$h_name == team)] <- df_temp$h_fourth_q[df_temp$h_name == team]
+    df_temp$team_fourth_q[which(df_temp$v_name == team)] <- df_temp$v_fourth_q[df_temp$v_name == team]
+    
+    df_temp$opp_first_q[which(df_temp$h_name == team)] <- df_temp$v_first_q[df_temp$h_name == team]
+    df_temp$opp_first_q[which(df_temp$v_name == team)] <- df_temp$h_first_q[df_temp$v_name == team]
+    df_temp$opp_second_q[which(df_temp$h_name == team)] <- df_temp$v_second_q[df_temp$h_name == team]
+    df_temp$opp_second_q[which(df_temp$v_name == team)] <- df_temp$h_second_q[df_temp$v_name == team]
+    df_temp$opp_third_q[which(df_temp$h_name == team)] <- df_temp$v_third_q[df_temp$h_name == team]
+    df_temp$opp_third_q[which(df_temp$v_name == team)] <- df_temp$h_third_q[df_temp$v_name == team]
+    df_temp$opp_fourth_q[which(df_temp$h_name == team)] <- df_temp$v_fourth_q[df_temp$h_name == team]
+    df_temp$opp_fourth_q[which(df_temp$v_name == team)] <- df_temp$h_fourth_q[df_temp$v_name == team]
+    
+  }
+  
+  df_temp <- df_temp[which(df_temp$opp_name == nw_div[1] | df_temp$opp_name == nw_div[2] | 
+                             df_temp$opp_name == nw_div[3] | df_temp$opp_name == nw_div[4] |
+                             df_temp$opp_name == nw_div2[5]), ]
+  
+  #NBA
+  t_nba_f <- sum(c(df_temp$team_first_q, 
+                   df_temp$team_second_q, 
+                   df_temp$team_third_q, 
+                   df_temp$team_fourth_q))/(length(df_temp$team_fc)*8.5*4)
+  t_nba_1 <- sum(df_temp$team_first_q)/(length(df_temp$team_first_q)*8.5)
+  t_nba_2 <- sum(df_temp$team_second_q)/(length(df_temp$team_second_q)*8.5)
+  t_nba_3 <- sum(df_temp$team_third_q)/(length(df_temp$team_third_q)*8.5)
+  t_nba_4 <- sum(df_temp$team_fourth_q)/(length(df_temp$team_fourth_q)*8.5)
+  
+  #POR
+  t_por_f <- sum(c(df_temp$team_first_q[df_temp$opp_name == nw_div[1]], 
+                   df_temp$team_second_q[df_temp$opp_name == nw_div[1]], 
+                   df_temp$team_third_q[df_temp$opp_name == nw_div[1]], 
+                   df_temp$team_fourth_q[df_temp$opp_name == nw_div[1]]))/(length((df_temp$team_fc[df_temp$opp_name == nw_div[1]]))*8.5*4)
+  t_por_1 <- sum(df_temp$team_first_q[df_temp$opp_name == nw_div[1]])/(length((df_temp$team_first_q[df_temp$opp_name == nw_div[1]]))*8.5)
+  t_por_2 <- sum(df_temp$team_second_q[df_temp$opp_name == nw_div[1]])/(length((df_temp$team_second_q[df_temp$opp_name == nw_div[1]]))*8.5)
+  t_por_3 <- sum(df_temp$team_third_q[df_temp$opp_name == nw_div[1]])/(length((df_temp$team_third_q[df_temp$opp_name == nw_div[1]]))*8.5)
+  t_por_4 <- sum(df_temp$team_fourth_q[df_temp$opp_name == nw_div[1]])/(length((df_temp$team_fourth_q[df_temp$opp_name == nw_div[1]]))*8.5)
+  
+  
+  #OKC
+  t_okc_f <- sum(c(df_temp$team_first_q[df_temp$opp_name == nw_div[2]], 
+                   df_temp$team_second_q[df_temp$opp_name == nw_div[2]], 
+                   df_temp$team_third_q[df_temp$opp_name == nw_div[2]], 
+                   df_temp$team_fourth_q[df_temp$opp_name == nw_div[2]]))/(length((df_temp$team_fc[df_temp$opp_name == nw_div[2]]))*8.5*4)
+  t_okc_1 <- sum(df_temp$team_first_q[df_temp$opp_name == nw_div[2]])/(length((df_temp$team_first_q[df_temp$opp_name == nw_div[2]]))*8.5)
+  t_okc_2 <- sum(df_temp$team_second_q[df_temp$opp_name == nw_div[2]])/(length((df_temp$team_second_q[df_temp$opp_name == nw_div[2]]))*8.5)
+  t_okc_3 <- sum(df_temp$team_third_q[df_temp$opp_name == nw_div[2]])/(length((df_temp$team_third_q[df_temp$opp_name == nw_div[2]]))*8.5)
+  t_okc_4 <- sum(df_temp$team_fourth_q[df_temp$opp_name == nw_div[2]])/(length((df_temp$team_fourth_q[df_temp$opp_name == nw_div[2]]))*8.5)
+  
+  
+  #MIN
+  t_min_f <- sum(c(df_temp$team_first_q[df_temp$opp_name == nw_div[3]], 
+                   df_temp$team_second_q[df_temp$opp_name == nw_div[3]], 
+                   df_temp$team_third_q[df_temp$opp_name == nw_div[3]], 
+                   df_temp$team_fourth_q[df_temp$opp_name == nw_div[3]]))/(length((df_temp$team_fc[df_temp$opp_name == nw_div[3]]))*8.5*4)
+  t_min_1 <- sum(df_temp$team_first_q[df_temp$opp_name == nw_div[3]])/(length((df_temp$team_first_q[df_temp$opp_name == nw_div[3]]))*8.5)
+  t_min_2 <- sum(df_temp$team_second_q[df_temp$opp_name == nw_div[3]])/(length((df_temp$team_second_q[df_temp$opp_name == nw_div[3]]))*8.5)
+  t_min_3 <- sum(df_temp$team_third_q[df_temp$opp_name == nw_div[3]])/(length((df_temp$team_third_q[df_temp$opp_name == nw_div[3]]))*8.5)
+  t_min_4 <- sum(df_temp$team_fourth_q[df_temp$opp_name == nw_div[3]])/(length((df_temp$team_fourth_q[df_temp$opp_name == nw_div[3]]))*8.5)
+  
+  
+  #UTA
+  t_uta_f <- sum(c(df_temp$team_first_q[df_temp$opp_name == nw_div[4]], 
+                   df_temp$team_second_q[df_temp$opp_name == nw_div[4]], 
+                   df_temp$team_third_q[df_temp$opp_name == nw_div[4]], 
+                   df_temp$team_fourth_q[df_temp$opp_name == nw_div[4]]))/(length((df_temp$team_fc[df_temp$opp_name == nw_div[4]]))*8.5*4)
+  t_uta_1 <- sum(df_temp$team_first_q[df_temp$opp_name == nw_div[4]])/(length((df_temp$team_first_q[df_temp$opp_name == nw_div[4]]))*8.5)
+  t_uta_2 <- sum(df_temp$team_second_q[df_temp$opp_name == nw_div[4]])/(length((df_temp$team_second_q[df_temp$opp_name == nw_div[4]]))*8.5)
+  t_uta_3 <- sum(df_temp$team_third_q[df_temp$opp_name == nw_div[4]])/(length((df_temp$team_third_q[df_temp$opp_name == nw_div[4]]))*8.5)
+  t_uta_4 <- sum(df_temp$team_fourth_q[df_temp$opp_name == nw_div[4]])/(length((df_temp$team_fourth_q[df_temp$opp_name == nw_div[4]]))*8.5)
+  
+  #DEN
+  t_den_f <- sum(c(df_temp$team_first_q[df_temp$opp_name == nw_div[5]], 
+                   df_temp$team_second_q[df_temp$opp_name == nw_div[5]], 
+                   df_temp$team_third_q[df_temp$opp_name == nw_div[5]], 
+                   df_temp$team_fourth_q[df_temp$opp_name == nw_div[5]]))/(length((df_temp$team_fc[df_temp$opp_name == nw_div2[5]]))*8.5*4)
+  t_den_1 <- sum(df_temp$team_first_q[df_temp$opp_name == nw_div2[5]])/(length((df_temp$team_first_q[df_temp$opp_name == nw_div2[5]]))*8.5)
+  t_den_2 <- sum(df_temp$team_second_q[df_temp$opp_name == nw_div2[5]])/(length((df_temp$team_second_q[df_temp$opp_name == nw_div2[5]]))*8.5)
+  t_den_3 <- sum(df_temp$team_third_q[df_temp$opp_name == nw_div2[5]])/(length((df_temp$team_third_q[df_temp$opp_name == nw_div2[5]]))*8.5)
+  t_den_4 <- sum(df_temp$team_fourth_q[df_temp$opp_name == nw_div2[5]])/(length((df_temp$team_fourth_q[df_temp$opp_name == nw_div2[5]]))*8.5)
+  
+  df_temp <- data.frame("NBA" = c(t_nba_f,t_nba_1,t_nba_2,t_nba_3,t_nba_4), 
+                        'POR' = c(t_por_f,t_por_1,t_por_2,t_por_3,t_por_4), 
+                        "OKC" = c(t_okc_f,t_okc_1,t_okc_2,t_okc_3,t_okc_4), 
+                        "MIN" = c(t_min_f, min_1, min_2, min_3, min_4), 
+                        "UTA" = c(t_uta_f,t_uta_1,t_uta_2,t_uta_3,t_uta_4), 
+                        "DEN" = c(t_den_f,t_den_1,t_den_2,t_den_3,t_den_4))
+  
+  
+  assign(paste0('df_lam_', tolower(substr(team, 1, 3))), df_temp, envir = .GlobalEnv)
+}
+@
+
+\item[A3]
+
+
+<<>>=
+anova(lm(fouls ~ quarter, data = df_model))
+TukeyHSD(aov(lm(fouls ~ quarter, data = df_model)))
+@
+
+\item[A4a]
+
+<<>>=
+glm(fouls ~ opp_name + quarter, data = df_model, family = poisson)
+@
+
+\item[A4b]
+
+<<>>=
+glm(fouls ~ opp_name * quarter, data = df_model, family = poisson)
+@
+
+\item[A5]
+
+McFadden:
+
+$R^2 = 1- \frac{ln - \hat L(M_{Full})}{ln \hat L(M_{Intercept})}$
+\\
+Where $M_{Full}$ is the model with predictors and $M_{Intercept}$ is the model without.
+\\
+$\hat L$ is the estimated liklihood. 
+
+Cox-Snell:
+$R^2 = 1- (\frac{ln - \hat L(M_{Full})}{ln \hat L(M_{Intercept})})^{2/N}$
+
+
+\item[A6]
+
+The poisson regression model is defined as follows:
+
+$ln(\lambda)= \beta_0 + \beta_1X_1 + \beta_2X_2 + \dots + \beta_{p-1}X_{p-1}$
+
+By raising e to both sides of the equation we are left with:
+
+$\lambda = e^{\beta_0} + e^{\beta_1X_1} + \dots + e^{\beta_{p-1}X_{p-1}}$
+
+which gives us a $\lambda$ that is representative of the number of fouls recived under the conditions set by the model.
+
+Because this is a qualitative model, all $\beta$ values are set to either 0 or 1, depending on the factors in play, with only one of each category (team, quarter) being able to hold a value of 1 at any time. This implies that when all are set to 0 that the model is measuring the not-included factors, which is represented by the intercept. 
+
+\item[A7]
+
+<<>>=
+#POR
+glm(fouls ~ opp_name + quarter, data = POR_model, family = poisson)
+
+#OKC
+glm(fouls ~ opp_name + quarter, data = OKL_model, family = poisson)
+
+#MIN
+glm(fouls ~ opp_name + quarter, data = MIN_model, family = poisson)
+
+#UTA
+glm(fouls ~ opp_name + quarter, data = UTA_model, family = poisson)
+
+@
+
+\item[A8]
+
+<<>>=
+anova(lm(fouls ~ quarter, data = df_model))
+anova(lm(fouls ~ opp_name, data = df_model))
+TukeyHSD(aov(lm(fouls ~ quarter, data = df_model)))
+@
+
+\section{Refrences}
+
+Poisson distribution - Maximum Likelihood Estimation. Normal distribution - Maximum likelihood estimation. https://www.statlect.com/fundamentals-of-statistics/Poisson-distribution-maximum-likelihood. Accessed 3 March 2018
+
+Ross, S. M. (1993). Introduction to Probability Models. San Diego, US.: Harcourt/Academic Press.
+
+Weisberg, S. (2013). Applied linear regression. Retrieved from https://ebookcentral.proquest.com
+
+\section{Additional Links}
+
+https://www.basketball-reference.com
+
+https://github.com/92swhite/NBA-Project
+
+
+
+\end{enumerate}
+\end{document}
