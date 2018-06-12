@@ -28,7 +28,7 @@ get_data <- function(temp){
       }
       if (length(unlist(strsplit(r[[1]][2], ''))) < 2){
         r[[1]][2] <- gsub(' ' , '', paste(r[[1]][2], 0))
-      }
+      } 
       
       x$foul_time[i] <- (gsub(' ', '', paste(r[[1]][1], ':', r[[1]][2])))
     }
